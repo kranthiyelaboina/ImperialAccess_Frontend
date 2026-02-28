@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { registerLounge } from '../../services/api'
 
 const lounges = [
   { name: 'Skyview Premium Lounge', terminal: 'Terminal 3', amenities: 'Wi-Fi, Showers, Dining', price: 45 },
@@ -9,7 +11,30 @@ const lounges = [
 
 const LoungeRegister: React.FC = () => {
   const [selected, setSelected] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const handleRegister = async () => {
+    if (selected === null || !user?.guest_id) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await registerLounge(user.guest_id, lounges[selected].name)
+      if (res.success) {
+        if (res.payment_required) {
+          navigate('/guest/payment', { state: { registration_id: res.registration_id, amount: res.amount_due, lounge_name: res.lounge_name, currency: res.currency } })
+        } else {
+          navigate('/guest/confirmation', { state: { lounge_name: res.lounge_name, access_granted: true } })
+        }
+      }
+    } catch (err: any) {
+      setError(err?.error || err?.message || 'Lounge registration failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <>
@@ -48,13 +73,14 @@ const LoungeRegister: React.FC = () => {
           <div>
             <h4 style={{ color: '#fff', margin: '0 0 4px', fontSize: 16 }}>Selected: {lounges[selected].name}</h4>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>Amount: ${lounges[selected].price}</p>
+            {error && <p style={{ color: '#e74c3c', fontSize: 13, margin: '8px 0 0' }}>{error}</p>}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="ea-dash-btn ea-dash-btn-outline" onClick={() => navigate('/guest/credit-check')}>
               Check Credit Eligibility
             </button>
-            <button className="ea-dash-btn ea-dash-btn-gold" onClick={() => navigate('/guest/payment')}>
-              Proceed to Payment
+            <button className="ea-dash-btn ea-dash-btn-gold" onClick={handleRegister} disabled={loading}>
+              {loading ? 'Registering...' : 'Register & Pay'}
             </button>
           </div>
         </div>

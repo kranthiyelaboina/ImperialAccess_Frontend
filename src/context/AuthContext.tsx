@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
 interface User {
-  id: number
+  id: string
   username: string
   full_name: string
   role: 'admin' | 'guest'
   face_registered?: boolean
   membership_type?: string
+  guest_id?: string
 }
 
 interface AuthContextType {
@@ -34,7 +35,13 @@ export const useAuth = () => useContext(AuthContext)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('ea_user')
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    try {
+      return JSON.parse(stored) as User
+    } catch {
+      localStorage.removeItem('ea_user')
+      return null
+    }
   })
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('ea_token'))
 
@@ -65,6 +72,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [token, logout])
+
+  // Keep token/user pair consistent in storage and state.
+  useEffect(() => {
+    if ((token && !user) || (!token && user)) {
+      localStorage.removeItem('ea_token')
+      localStorage.removeItem('ea_user')
+      setToken(null)
+      setUser(null)
+    }
+  }, [token, user])
 
   return (
     <AuthContext.Provider

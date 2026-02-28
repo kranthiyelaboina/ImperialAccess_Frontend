@@ -10,6 +10,7 @@ const navItems = [
   { path: '/guest/dining', label: 'Dining Tokens', icon: <SvgDining /> },
   { path: '/guest/boarding', label: 'Boarding Pass', icon: <SvgBoarding /> },
   { path: '/guest/history', label: 'Visit History', icon: <SvgHistory /> },
+  { path: '/guest/concierge', label: 'AI Concierge', icon: <SvgConcierge /> },
 ]
 
 const GuestLayout: React.FC = () => {
@@ -73,5 +74,6 @@ function SvgBoarding() { return <svg width="18" height="18" fill="none" viewBox=
 function SvgHistory() { return <svg width="18" height="18" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M9 5v4l-3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> }
 function SvgHome() { return <svg width="18" height="18" fill="none" viewBox="0 0 18 18"><path d="M2 9l7-7 7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 8v7a1 1 0 001 1h3v-4h2v4h3a1 1 0 001-1V8" stroke="currentColor" strokeWidth="1.5"/></svg> }
 function SvgLogout() { return <svg width="18" height="18" fill="none" viewBox="0 0 18 18"><path d="M6 2H4a2 2 0 00-2 2v10a2 2 0 002 2h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M12 13l4-4-4-4M7 9h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> }
+function SvgConcierge() { return <svg width="18" height="18" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M9 4c-2.8 0-5 1.6-5 3.6 0 1.2.7 2.2 1.7 2.8v1.6l2-1.2c.4.1.8.1 1.3.1 2.8 0 5-1.6 5-3.6S11.8 4 9 4z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="7" cy="7.5" r=".8" fill="currentColor"/><circle cx="9" cy="7.5" r=".8" fill="currentColor"/><circle cx="11" cy="7.5" r=".8" fill="currentColor"/></svg> }
 
 export default GuestLayout

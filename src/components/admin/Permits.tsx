@@ -1,18 +1,38 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { getGuests, type GuestListResponse } from '../../services/api'
 
-const permits = [
-  { id: 1, name: 'Jane Smith', lounge: 'Premium Lounge', issued: '2026-02-27', expires: '2026-02-27', status: 'active' },
-  { id: 2, name: 'John Doe', lounge: 'First Class Lounge', issued: '2026-02-27', expires: '2026-02-27', status: 'active' },
-  { id: 3, name: 'Ananya Sharma', lounge: 'Business Lounge', issued: '2026-02-26', expires: '2026-02-26', status: 'expired' },
-  { id: 4, name: 'Sneha Kapoor', lounge: 'First Class Lounge', issued: '2026-02-27', expires: '2026-02-27', status: 'active' },
-  { id: 5, name: 'Aditya Verma', lounge: 'Premium Lounge', issued: '2026-02-25', expires: '2026-02-25', status: 'revoked' },
-]
+interface Permit {
+  guest_id: string
+  name: string
+  membership_type: string
+  face_registered: boolean
+  created_at: string | null
+  status: 'active' | 'expired' | 'revoked'
+}
 
 const Permits: React.FC = () => {
-  const [data, setData] = React.useState(permits)
+  const [data, setData] = useState<Permit[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const revoke = (id: number) => {
-    setData(prev => prev.map(p => p.id === id ? { ...p, status: 'revoked' } : p))
+  useEffect(() => {
+    getGuests()
+      .then(d => {
+        const permits: Permit[] = (d.guests || []).map(g => ({
+          guest_id: g.guest_id,
+          name: g.full_name,
+          membership_type: g.membership_type || 'standard',
+          face_registered: g.face_registered,
+          created_at: g.created_at,
+          status: g.face_registered ? 'active' as const : 'expired' as const,
+        }))
+        setData(permits)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const revoke = (guest_id: string) => {
+    setData(prev => prev.map(p => p.guest_id === guest_id ? { ...p, status: 'revoked' as const } : p))
   }
 
   return (
@@ -40,21 +60,23 @@ const Permits: React.FC = () => {
               <tr>
                 <th>#</th>
                 <th>Guest</th>
-                <th>Lounge</th>
-                <th>Issued</th>
-                <th>Expires</th>
+                <th>Membership</th>
+                <th>Face Registered</th>
+                <th>Registered</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((p, i) => (
-                <tr key={p.id}>
+              {loading ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>Loading...</td></tr>
+              ) : data.length > 0 ? data.map((p, i) => (
+                <tr key={p.guest_id}>
                   <td>{i + 1}</td>
                   <td className="ea-dash-table-name">{p.name}</td>
-                  <td>{p.lounge}</td>
-                  <td>{p.issued}</td>
-                  <td>{p.expires}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{p.membership_type}</td>
+                  <td>{p.face_registered ? 'Yes' : 'No'}</td>
+                  <td>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                   <td>
                     <span style={{
                       padding: '3px 10px', borderRadius: 50, fontSize: 11, fontWeight: 600,
@@ -69,14 +91,16 @@ const Permits: React.FC = () => {
                       <button
                         className="ea-dash-btn ea-dash-btn-outline"
                         style={{ fontSize: 11, padding: '4px 10px' }}
-                        onClick={() => revoke(p.id)}
+                        onClick={() => revoke(p.guest_id)}
                       >
                         Revoke
                       </button>
                     )}
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>No permits found</td></tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { registerGuest } from '../services/api'
+import { registerGuest, loginGuest } from '../services/api'
 
 const RegisterPage: React.FC = () => {
   const [form, setForm] = useState({
@@ -33,25 +33,16 @@ const RegisterPage: React.FC = () => {
         flight_number: form.flight_number || undefined,
       })
       if (res.success) {
-        // Auto-login after registration
-        const mockUser = {
-          id: res.user_id,
-          username: form.username || form.email.split('@')[0],
-          full_name: form.name,
-          role: 'guest' as const,
+        // Auto-login after registration using real backend
+        const username = form.username || form.email.split('@')[0]
+        const loginRes = await loginGuest(username, form.password)
+        if (loginRes.success) {
+          login(loginRes.token, loginRes.user)
+          navigate('/guest/face-register')
         }
-        login('mock-token', mockUser)
-        navigate('/guest/face-register')
       }
     } catch (err: any) {
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        // Fallback mock navigation when backend offline
-        const mockUser = { id: 1, username: form.email.split('@')[0], full_name: form.name, role: 'guest' as const }
-        login('mock-token', mockUser)
-        navigate('/guest')
-      } else {
-        setError(err?.error || 'Registration failed')
-      }
+      setError(err?.error || err?.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -1,6 +1,20 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { getGuestDashboard, type GuestDashboardData } from '../../services/api'
 
 const BoardingPass: React.FC = () => {
+  const [guest, setGuest] = useState<GuestDashboardData['guest'] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getGuestDashboard()
+      .then(data => setGuest(data.guest))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ color: 'rgba(255,255,255,0.4)', padding: 40 }}>Loading...</div>
+
+  const g = guest
   return (
     <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 20 }}>
       <div className="ea-dash-card" style={{
@@ -16,7 +30,7 @@ const BoardingPass: React.FC = () => {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1 }}>Passenger</div>
-            <div style={{ fontSize: 16, color: '#fff', fontWeight: 600 }}>Guest User</div>
+            <div style={{ fontSize: 16, color: '#fff', fontWeight: 600 }}>{g?.full_name || 'Guest'}</div>
           </div>
         </div>
 
@@ -39,14 +53,12 @@ const BoardingPass: React.FC = () => {
 
         <div style={{ borderTop: '1px dashed rgba(197,164,126,0.15)', paddingTop: 20, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {[
-            { label: 'Flight', value: 'EK501' },
-            { label: 'Airline', value: 'Emirates' },
-            { label: 'Gate', value: 'B12' },
-            { label: 'Seat', value: '14A' },
-            { label: 'Date', value: '27 Feb 2026' },
-            { label: 'Departure', value: '18:30' },
-            { label: 'Boarding', value: 'BP-2026-1234' },
-            { label: 'Class', value: 'Business' },
+            { label: 'Flight', value: g?.flight_number || '—' },
+            { label: 'Airline', value: g?.airline || '—' },
+            { label: 'Gate', value: '—' },
+            { label: 'Seat', value: '—' },
+            { label: 'Departure', value: g?.departure_time ? new Date(g.departure_time).toLocaleString() : '—' },
+            { label: 'Boarding Pass', value: g?.boarding_pass_no || '—' },
           ].map(item => (
             <div key={item.label}>
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>{item.label}</div>

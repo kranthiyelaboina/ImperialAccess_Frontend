@@ -219,3 +219,22 @@ For questions or support, please contact the development team.
 ---
 
 **Built with ❤️ using React, TypeScript, and modern web technologies.**
+
+## Frontend Integration Checks
+
+### Backend Connectivity
+
+- Dev proxy routes `/api` to `http://localhost:5000`.
+- For non-proxy environments, define `VITE_API_URL` with backend base URL.
+
+### Smoke Validation
+
+1. Run build check:
+   - `npm run build`
+2. Start frontend:
+   - `npm run dev`
+3. Manual checks:
+   - Login as guest and admin
+   - Guest dashboard loads with and without active lounge access
+   - Admin pages load without null event-name/time crashes
+   - Unauthorized direct access to `/guest/*` and `/admin/*` redirects to `/login`

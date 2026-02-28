@@ -1,24 +1,38 @@
 import React, { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { checkCredit } from '../../services/api'
+
+const CARD_NETWORK_OPTIONS = [
+  { value: 'visa_infinite', label: 'Visa Infinite' },
+  { value: 'amex_platinum', label: 'Amex Platinum' },
+  { value: 'mastercard_world_elite', label: 'Mastercard World Elite' },
+]
 
 const CreditCheck: React.FC = () => {
   const [cardLast4, setCardLast4] = useState('')
   const [cardType, setCardType] = useState('visa')
-  const [cardNetwork, setCardNetwork] = useState('')
+  const [cardNetwork, setCardNetwork] = useState(CARD_NETWORK_OPTIONS[0].value)
   const [result, setResult] = useState<null | { eligible: boolean; message: string; visits_remaining?: number; amount_due?: number }>(null)
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user?.guest_id) return
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const eligible = cardNetwork.toLowerCase().includes('infinite') || cardNetwork.toLowerCase().includes('centurion')
-      setResult(eligible
-        ? { eligible: true, message: 'Card qualifies for complimentary lounge access', visits_remaining: 3 }
-        : { eligible: false, message: 'Card does not qualify. Standard rate applies.', amount_due: 45 }
-      )
+    try {
+      const res = await checkCredit(user.guest_id, cardLast4, cardType, cardNetwork)
+      setResult({
+        eligible: res.eligible,
+        message: res.message,
+        visits_remaining: res.visits_remaining,
+        amount_due: res.amount_due,
+      })
+    } catch (err: any) {
+      setResult({ eligible: false, message: err?.error || err?.message || 'Credit check failed.' })
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   return (
@@ -50,7 +64,16 @@ const CreditCheck: React.FC = () => {
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Card Network / Tier</label>
-              <input className="ea-dash-search" placeholder="e.g. Visa Infinite" value={cardNetwork} onChange={e => setCardNetwork(e.target.value)} style={{ marginBottom: 0 }} />
+              <select
+                className="ea-dash-search"
+                value={cardNetwork}
+                onChange={e => setCardNetwork(e.target.value)}
+                style={{ marginBottom: 0, appearance: 'none', WebkitAppearance: 'none' }}
+              >
+                {CARD_NETWORK_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
           </div>
           <button type="submit" className="ea-dash-btn ea-dash-btn-gold" disabled={loading || !cardLast4}>

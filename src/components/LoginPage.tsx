@@ -24,19 +24,7 @@ const LoginPage: React.FC = () => {
         navigate(role === 'admin' ? '/admin' : '/guest')
       }
     } catch (err: any) {
-      // Fallback: allow mock navigation when backend is offline
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        const mockUser = {
-          id: 1,
-          username,
-          full_name: username,
-          role: role as 'admin' | 'guest',
-        }
-        login('mock-token', mockUser)
-        navigate(role === 'admin' ? '/admin' : '/guest')
-      } else {
-        setError(err?.error || 'Invalid credentials')
-      }
+      setError(err?.error || err?.message || 'Login failed. Please check your credentials and ensure the server is running.')
     } finally {
       setLoading(false)
     }
@@ -98,6 +86,21 @@ const LoginPage: React.FC = () => {
             <form onSubmit={handleLogin}>
               {error && (
                 <div style={{ color: '#e74c3c', fontSize: 13, marginBottom: 10, textAlign: 'left' }}>{error}</div>
+              )}
+              {role === 'admin' && (
+                <div style={{
+                  background: 'rgba(197,164,126,0.08)',
+                  border: '1px solid rgba(197,164,126,0.2)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  marginBottom: 12,
+                  fontSize: 12,
+                  color: 'rgba(255,255,255,0.5)',
+                  lineHeight: 1.6,
+                }}>
+                  <span style={{ color: '#c5a47e', fontWeight: 600 }}>Admin Credentials</span><br />
+                  Username: <span style={{ color: '#fff', fontFamily: 'monospace' }}>admin</span>&nbsp;&nbsp;|&nbsp;&nbsp;Password: <span style={{ color: '#fff', fontFamily: 'monospace' }}>admin123</span>
+                </div>
               )}
               <input
                 type="text"

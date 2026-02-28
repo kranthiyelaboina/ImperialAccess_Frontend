@@ -1,36 +1,54 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { issueDiningToken, redeemDiningToken } from '../../services/api'
 
-const mockTokens = [
-  { id: 1, guest: 'Jane Smith', guest_id: 1, type: 'breakfast', status: 'active', issued_at: '2026-02-27T10:20:00' },
-  { id: 2, guest: 'Jane Smith', guest_id: 1, type: 'lunch', status: 'redeemed', issued_at: '2026-02-27T10:20:00', redeemed_at: '2026-02-27T12:45:00' },
-  { id: 3, guest: 'John Doe', guest_id: 2, type: 'breakfast', status: 'active', issued_at: '2026-02-27T11:05:00' },
-  { id: 4, guest: 'Sneha Kapoor', guest_id: 5, type: 'snacks', status: 'redeemed', issued_at: '2026-02-27T09:48:00', redeemed_at: '2026-02-27T11:00:00' },
-  { id: 5, guest: 'Rohan Mehta', guest_id: 4, type: 'lunch', status: 'active', issued_at: '2026-02-27T09:22:00' },
-]
+interface TokenRow {
+  token_code: string
+  guest_name: string
+  guest_id: string
+  status: 'active' | 'redeemed'
+  issued_at: string
+  redeemed_at?: string
+}
 
 const DiningTokenMgmt: React.FC = () => {
-  const [tokens, setTokens] = useState(mockTokens)
-  const [issueForm, setIssueForm] = useState({ guest_id: '', type: 'breakfast' })
+  const [tokens, setTokens] = useState<TokenRow[]>([])
+  const [issueForm, setIssueForm] = useState({ guest_id: '' })
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  // Fetch existing tokens from guest dashboard data — we'll collect from guest list
+  useEffect(() => {
+    // No dedicated "list all tokens" endpoint, so we start empty and accumulate via issue
+  }, [])
 
   const handleIssue = async () => {
     if (!issueForm.guest_id) return
     setLoading(true)
+    setMessage('')
     try {
-      await issueDiningToken(Number(issueForm.guest_id))
-    } catch {}
-    setTokens(prev => [...prev, {
-      id: prev.length + 1, guest: `Guest #${issueForm.guest_id}`, guest_id: Number(issueForm.guest_id),
-      type: issueForm.type, status: 'active', issued_at: new Date().toISOString(),
-    }])
-    setIssueForm({ guest_id: '', type: 'breakfast' })
+      const res = await issueDiningToken(issueForm.guest_id)
+      setTokens(prev => [...prev, {
+        token_code: res.token_code,
+        guest_name: `Guest ${issueForm.guest_id.slice(-4)}`,
+        guest_id: issueForm.guest_id,
+        status: 'active',
+        issued_at: new Date().toISOString(),
+      }])
+      setMessage(res.message || 'Token issued successfully')
+      setIssueForm({ guest_id: '' })
+    } catch (err: any) {
+      setMessage(err?.message || 'Failed to issue token')
+    }
     setLoading(false)
   }
 
-  const handleRedeem = async (tokenId: number) => {
-    try { await redeemDiningToken(String(tokenId)) } catch {}
-    setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: 'redeemed', redeemed_at: new Date().toISOString() } : t))
+  const handleRedeem = async (token_code: string) => {
+    try {
+      await redeemDiningToken(token_code)
+      setTokens(prev => prev.map(t => t.token_code === token_code ? { ...t, status: 'redeemed', redeemed_at: new Date().toISOString() } : t))
+    } catch (err: any) {
+      setMessage(err?.message || 'Failed to redeem token')
+    }
   }
 
   const active = tokens.filter(t => t.status === 'active').length
@@ -60,7 +78,7 @@ const DiningTokenMgmt: React.FC = () => {
           <h3 className="ea-dash-card-title">Issue Token</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input
-              type="number"
+              type="text"
               placeholder="Guest ID"
               value={issueForm.guest_id}
               onChange={e => setIssueForm(prev => ({ ...prev, guest_id: e.target.value }))}
@@ -69,19 +87,9 @@ const DiningTokenMgmt: React.FC = () => {
                 background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 14, outline: 'none',
               }}
             />
-            <select
-              value={issueForm.type}
-              onChange={e => setIssueForm(prev => ({ ...prev, type: e.target.value }))}
-              style={{
-                padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(197,164,126,0.25)',
-                background: 'rgba(15,12,8,0.9)', color: '#fff', fontSize: 14, outline: 'none',
-              }}
-            >
-              <option value="breakfast">Breakfast</option>
-              <option value="lunch">Lunch</option>
-              <option value="dinner">Dinner</option>
-              <option value="snacks">Snacks</option>
-            </select>
+            {message && (
+              <div style={{ fontSize: 12, color: message.includes('Failed') ? '#e74c3c' : '#2ecc71' }}>{message}</div>
+            )}
             <button className="ea-dash-btn ea-dash-btn-gold" onClick={handleIssue} disabled={loading}>
               {loading ? 'Issuing...' : 'Issue Token'}
             </button>
@@ -95,20 +103,18 @@ const DiningTokenMgmt: React.FC = () => {
             <table className="ea-dash-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>Token Code</th>
                   <th>Guest</th>
-                  <th>Type</th>
                   <th>Issued</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {tokens.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td className="ea-dash-table-name">{t.guest}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{t.type}</td>
+                {tokens.length > 0 ? tokens.map(t => (
+                  <tr key={t.token_code}>
+                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{t.token_code}</td>
+                    <td className="ea-dash-table-name">{t.guest_name}</td>
                     <td>{new Date(t.issued_at).toLocaleTimeString()}</td>
                     <td>
                       <span style={{
@@ -124,14 +130,16 @@ const DiningTokenMgmt: React.FC = () => {
                         <button
                           className="ea-dash-btn ea-dash-btn-outline"
                           style={{ fontSize: 11, padding: '4px 10px' }}
-                          onClick={() => handleRedeem(t.id)}
+                          onClick={() => handleRedeem(t.token_code)}
                         >
                           Redeem
                         </button>
                       )}
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>No tokens issued yet</td></tr>
+                )}
               </tbody>
             </table>
           </div>

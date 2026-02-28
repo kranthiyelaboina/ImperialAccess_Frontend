@@ -1,7 +1,7 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 
 /* ---------- Public / Landing ---------- */
 import Navbar from './components/Navbar'
@@ -26,6 +26,7 @@ import LoungeAccess from './components/guest/LoungeAccess'
 import DiningTokens from './components/guest/DiningTokens'
 import BoardingPass from './components/guest/BoardingPass'
 import VisitHistory from './components/guest/VisitHistory'
+import AIConcierge from './components/guest/AIConcierge'
 
 /* ---------- Admin ---------- */
 import AdminLayout from './components/admin/AdminLayout'
@@ -53,6 +54,20 @@ const LandingPage: React.FC = () => (
   </div>
 )
 
+const RequireRole: React.FC<{ role: 'guest' | 'admin'; children: React.ReactElement }> = ({ role, children }) => {
+  const { isAuthenticated, user } = useAuth()
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user.role !== role) {
+    return <Navigate to="/login" replace />
+  }
+
+  return children
+}
+
 /* ---------- App ---------- */
 const App: React.FC = () => (
   <AuthProvider>
@@ -64,7 +79,14 @@ const App: React.FC = () => (
         <Route path="/register" element={<RegisterPage />} />
 
         {/* Guest Dashboard */}
-        <Route path="/guest" element={<GuestLayout />}>
+        <Route
+          path="/guest"
+          element={
+            <RequireRole role="guest">
+              <GuestLayout />
+            </RequireRole>
+          }
+        >
           <Route index element={<GuestOverview />} />
           <Route path="face-register" element={<FaceRegister />} />
           <Route path="lounge-register" element={<LoungeRegister />} />
@@ -75,10 +97,18 @@ const App: React.FC = () => (
           <Route path="dining" element={<DiningTokens />} />
           <Route path="boarding" element={<BoardingPass />} />
           <Route path="history" element={<VisitHistory />} />
+          <Route path="concierge" element={<AIConcierge />} />
         </Route>
 
         {/* Admin Dashboard */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <RequireRole role="admin">
+              <AdminLayout />
+            </RequireRole>
+          }
+        >
           <Route index element={<AdminOverview />} />
           <Route path="camera" element={<LiveCamera />} />
           <Route path="modes" element={<ModeControl />} />
@@ -90,6 +120,8 @@ const App: React.FC = () => (
           <Route path="events" element={<EventLog />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   </AuthProvider>

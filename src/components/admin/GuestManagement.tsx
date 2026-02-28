@@ -1,40 +1,53 @@
 import React, { useState, useEffect } from 'react'
-import { getGuests, deleteGuestFace } from '../../services/api'
+import { getGuests, deleteGuestFace, type GuestListResponse } from '../../services/api'
 
-const mockGuests = [
-  { id: 1, full_name: 'Jane Smith', username: 'jsmith', airline: 'Emirates', boarding_pass_no: 'EK502-01', face_registered: true, lounge_registered: true },
-  { id: 2, full_name: 'John Doe', username: 'jdoe', airline: 'Air India', boarding_pass_no: 'AI101-14', face_registered: true, lounge_registered: true },
-  { id: 3, full_name: 'Ananya Sharma', username: 'ananya', airline: 'IndiGo', boarding_pass_no: '6E202-09', face_registered: true, lounge_registered: false },
-  { id: 4, full_name: 'Rohan Mehta', username: 'rohan', airline: 'Vistara', boarding_pass_no: 'UK845-06', face_registered: false, lounge_registered: false },
-  { id: 5, full_name: 'Sneha Kapoor', username: 'sneha', airline: 'Emirates', boarding_pass_no: 'EK503-11', face_registered: true, lounge_registered: true },
-]
+type Guest = GuestListResponse['guests'][number]
 
 const GuestManagement: React.FC = () => {
-  const [guests, setGuests] = useState(mockGuests)
+  const [guests, setGuests] = useState<Guest[]>([])
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    getGuests().then(d => {
-      if (d.guests) setGuests(d.guests as typeof mockGuests)
-    }).catch(() => {})
-  }, [])
-
-  const filtered = guests.filter(g => g.full_name.toLowerCase().includes(search.toLowerCase()) || g.username.toLowerCase().includes(search.toLowerCase()))
-
-  const handleDeleteFace = async (id: number, name: string) => {
-    if (!confirm(`Delete face data for ${name}?`)) return
-    try { await deleteGuestFace(id) } catch {}
-    setGuests(prev => prev.map(g => g.id === id ? { ...g, face_registered: false } : g))
+  const fetchGuests = () => {
+    setLoading(true)
+    getGuests(undefined, search || undefined)
+      .then(d => setGuests(d.guests || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }
+
+  useEffect(() => { fetchGuests() }, [])
+
+  const handleSearch = (val: string) => {
+    setSearch(val)
+    getGuests(undefined, val || undefined)
+      .then(d => setGuests(d.guests || []))
+      .catch(() => {})
+  }
+
+  const handleDeleteFace = async (guest_id: string, name: string) => {
+    if (!confirm(`Delete face data for ${name}?`)) return
+    try {
+      await deleteGuestFace(guest_id)
+      setGuests(prev => prev.map(g => g.guest_id === guest_id ? { ...g, face_registered: false } : g))
+    } catch {}
+  }
+
+  const filtered = guests.filter(g => {
+    const name = (g.full_name || '').toLowerCase()
+    const email = (g.email || '').toLowerCase()
+    const q = search.toLowerCase()
+    return name.includes(q) || email.includes(q)
+  })
 
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
         <input
           type="text"
-          placeholder="Search by name or username..."
+          placeholder="Search by name or email..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => handleSearch(e.target.value)}
           style={{
             padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(197,164,126,0.25)',
             background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 14, width: 300, outline: 'none',
@@ -51,22 +64,24 @@ const GuestManagement: React.FC = () => {
               <tr>
                 <th>#</th>
                 <th>Name</th>
-                <th>Username</th>
+                <th>Email</th>
                 <th>Airline</th>
-                <th>Boarding Pass</th>
+                <th>Membership</th>
                 <th>Face</th>
-                <th>Lounge</th>
+                <th>Registered</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((g, i) => (
-                <tr key={g.id}>
+              {loading ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>Loading...</td></tr>
+              ) : filtered.length > 0 ? filtered.map((g, i) => (
+                <tr key={g.guest_id}>
                   <td>{i + 1}</td>
                   <td className="ea-dash-table-name">{g.full_name}</td>
-                  <td>{g.username}</td>
-                  <td>{g.airline}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{g.boarding_pass_no}</td>
+                  <td>{g.email || '—'}</td>
+                  <td>{g.airline || '—'}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{g.membership_type || '-'}</td>
                   <td>
                     <span style={{
                       padding: '3px 10px', borderRadius: 50, fontSize: 11, fontWeight: 600,
@@ -75,27 +90,22 @@ const GuestManagement: React.FC = () => {
                       border: `1px solid ${g.face_registered ? 'rgba(46,204,113,0.3)' : 'rgba(231,76,60,0.3)'}`,
                     }}>{g.face_registered ? 'Registered' : 'Pending'}</span>
                   </td>
-                  <td>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: 50, fontSize: 11, fontWeight: 600,
-                      background: g.lounge_registered ? 'rgba(46,204,113,0.12)' : 'rgba(197,164,126,0.12)',
-                      color: g.lounge_registered ? '#2ecc71' : '#c5a47e',
-                      border: `1px solid ${g.lounge_registered ? 'rgba(46,204,113,0.3)' : 'rgba(197,164,126,0.3)'}`,
-                    }}>{g.lounge_registered ? 'Yes' : 'No'}</span>
-                  </td>
+                  <td>{g.created_at ? new Date(g.created_at).toLocaleDateString() : '—'}</td>
                   <td>
                     {g.face_registered && (
                       <button
                         className="ea-dash-btn ea-dash-btn-outline"
                         style={{ fontSize: 11, padding: '4px 10px' }}
-                        onClick={() => handleDeleteFace(g.id, g.full_name)}
+                        onClick={() => handleDeleteFace(g.guest_id, g.full_name)}
                       >
                         Delete Face
                       </button>
                     )}
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>No guests found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
